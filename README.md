@@ -1,7 +1,7 @@
 dmn-fusion
 ==========
 
-daemon fusion:The Dallas Morning News libraries for generating news apps backed by Google Fusion Tables
+daemon fusion:The Dallas Morning News' libraries for generating news apps backed by Google Fusion Tables
 
 jquery.dmm.fusion.search uses a Fusion Table to create a searchable data set. Requires jQuery, jQueryUI, and jQuery Tablesorter.
 
