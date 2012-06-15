@@ -7,7 +7,7 @@ jquery.dmm.fusion.search uses a Fusion Table to create a searchable data set. Re
 
 jquery.dmn.fusion.elexResults uses a Fusion Table to power live (and otherwise) election results. Requires jQuery and appropriate CSS.
 
-coming soon: dmn.fusion.mapbrowse which uses a Fusion Table to allow mouseover results on a map. Depends on Google visualization libraries and fusiontips.js
+_coming soon: dmn.fusion.mapbrowse which uses a Fusion Table to allow mouseover results on a map. Depends on Google visualization libraries and fusiontips.js_
 
 Code is by Daniel Lathrop https://github.com/lathropd
 
