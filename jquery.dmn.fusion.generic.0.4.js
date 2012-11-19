@@ -1,5 +1,5 @@
 // FusionDMN
-// ver 0.3.7
+// ver 0.4 beta
 // A product of The Dallas Morning News
 // FusionDMN is an AWESOME jQuery plugin for displaying Google Fusion Tables as
 // searchable databases. It's open source under the very liberal MIT License
@@ -9,8 +9,10 @@
 // The original script was not a jQuery plugin but making it one seemed like the
 // best way to make if more usable in the field.
 //
+// Version 0.4 now works with the documented Fusion Tables javascript API
+//
 // written by Daniel Lathrop <dlathrop@dallasnews.com>
-// Copyright (c) 2011 The Dallas Morning News
+// Copyright (c) 2012 The Dallas Morning News
 // released under the terms of the MIT License:
 // http://www.opensource.org/licenses/mit-license.php
 //
@@ -40,6 +42,7 @@ $('head').append(headerInsert);
 (function( $ ){
      $.widget("dmn.fusiondmn", {
           options: {
+             'apiKey'                   : undefined,
              'fusionTableId'            :     undefined,
              'detailsTableId'           : undefined, // if this is undefined it defaults to fusionTableId
              // which columns display in the results table
@@ -83,7 +86,7 @@ $('head').append(headerInsert);
              // but doing so will also make your code brittle to implementation
              // changes since I don't promise not to change how the internals
              // work.
-             '_widgetInnerHtml'         :   '<form id="fusionDataForm"><table id="fusionDataFormFields" style="border:0"></table><input type="submit" id="fusionButtonSearch" value="Search"><input type="submit" id="fusionButtonAll" value="Top 200"></form><div id="fusionDialog"><div id="fusionDialogText"></div></div><div id="fusionData"><p id="fusionMessage"></p><table id="fusionDataTable"></table></div>'
+             '_widgetInnerHtml'         :   '<form id="fusionDataForm"><table id="fusionDataFormFields" style="border:0"></table><button id="fusionButtonSearch">Search</button><button id="fusionButtonAll">View all</button></form><div id="fusionDialog"><div id="fusionDialogText"></div></div><div id="fusionData"><p id="fusionMessage"></p><table id="fusionDataTable"></table></div>'
           },
           _create: function () {
                var self = this;
@@ -101,7 +104,9 @@ $('head').append(headerInsert);
                     if (_.isNumber(o.fusionTableId)) {
                          // fusionTableId is probably valid
                     } else {
-                         throw "Invalid fusionTableId";
+                        // int table ids now deprecated
+                        // next version should have some kind of check
+                        // throw "Invalid fusionTableId";
                     }
                } else {
                     throw "fusionTableId not set";
@@ -129,9 +134,12 @@ $('head').append(headerInsert);
                this.clearLoadingMessage();
                $('#fusionButtonSearch').click(function () {
                     el.fusiondmn("queryTable", "query");
+                    console.log("test search");
+
                     return false;
                });
                $('#fusionButtonAll').click(function () {
+                    console.log("test all");
                     el.fusiondmn("queryTable", "all");
                     return false;
                });
@@ -271,6 +279,7 @@ $('head').append(headerInsert);
                     var fromString = ' FROM ' + o.fusionTableId;
                     var whereString = ' WHERE ROWID = -1 ';
                     var sqlString = selectString + fromString + whereString;
+                    sqlString = sqlString.replace(' ', '+');
                     //alert(queryString);
                     var queryUrl = "https://www.google.com/fusiontables/api/query?jsonCallback=?&sql=" + escape(sqlString);
                     $.getJSON(queryUrl, function(data, textStatus) {
@@ -361,13 +370,15 @@ $('head').append(headerInsert);
                }
                var sqlString = selectString + fromString + whereString + orderString;
                //alert(queryString);
-               var queryUrl = "https://www.google.com/fusiontables/api/query?jsonCallback=?&sql=" + escape(sqlString);
+               var queryUrl = 'https://www.googleapis.com/fusiontables/v1/query?sql='+
+                escape(sqlString) + '&key=' + this.options.apiKey +' &callback=?';
+               
                // query the data source with a callback
                $.getJSON(queryUrl, function(data, textStatus) {
                     // check for results, if none set the message and return
-                    var cols = data.table.cols;
+                    var cols = data.columns;
                     var templ = o.rowTemplate;
-                    var rows = data.table.rows;
+                    var rows = data.rows;
                     if (rows.length > 0) {
                
                          // write the table header
@@ -390,28 +401,29 @@ $('head').append(headerInsert);
                          // need to deal with escaping column names 
                          var  dataObj =  {};
      
-                         $.each(data.table.rows, function (index, row) {
+                         $.each(data.rows, function (index, row) {
                               var rowString;
                               $.each(cols, function (index, col) {
                                    var val = row[index];
-                                   if (_.isNumber(val)) {
-                                        if (col != "rowid" ){
-                                             val = formatApNum(val);
-                                        }
+                                   if (_.isNumber(val) && col != "rowid") {
+                                             raw = val;
+                                             ap = formatApNum(val);
+                                             dollars = formatApNum(val, "$");
+                                             dataObj[jsify(col)] = ap;
+                                             dataObj[jsify(col + ' raw')] = raw;
+                                             dataObj[jsify(col + ' ap')] = ap;
+                                             dataObj[jsify(col+' dollars')] = dollars;
+                                        } else {
+                                        dataObj[jsify(col)] = val;
+
                                    }
-                                   dataObj[jsify(col)] = val;
                               });
+                              
                               var rowString = $(templ(dataObj));
                               var headerString = o.detailsTitleTemplate(dataObj);
                               var fusiondmnParams = "'displayDetails', '" + headerString + "', '" + dataObj.rowid + "'";
                               // bind the link field to the displayDetails methods
                               $("td:eq(" + o.detailsField + ")", rowString).wrapInner('<a href="#row' + dataObj.rowid + '" onClick="$(' + "'#" + el.attr('id') + "'" + ').fusiondmn(' + fusiondmnParams + '); return false;"/>');
-                              //$('a', rowString).click(function () {
-                              //     el.fusiondmn("displayDetails", headerString, index);
-                              //     return false;
-                              //});
-                              //console.log(dataObj.rowid);
-                              //console.log("yip\n")
                               target.append(rowString);
      
      
@@ -463,10 +475,19 @@ $('head').append(headerInsert);
                                    var val = row[index];
                                    if (_.isNumber(val)) {
                                         if (col != "rowid" ){
-                                             val = formatApNum(val);
+                                             raw = val;
+                                             ap = formatApNum(val);
+                                             dollars = formatApNum(val, "$");
+                                             dataObj[jsify(col)] = ap;
+                                             dataObj[jsify(col + ' raw')] = raw;
+                                             dataObj[jsify(col + ' ap')] = ap;
+                                             dataObj[jsify(col+' dollars')] = dollars;
+
                                         }
+                                   } else {
+                                        dataObj[jsify(col)] = val;
+
                                    }
-                                   dataObj[jsify(col)] = val;
                               });
                             
                             //write the header if it is blank
