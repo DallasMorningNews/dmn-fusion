@@ -4,7 +4,6 @@
 // FusionDMN is an AWESOME jQuery plugin for displaying Google Fusion Tables as
 // searchable databases. It's open source under the very liberal MIT License
 // If you use it, please email dlathrop@dallasnews.com so I know about it, and
-// tell me what you think. Uses jquery.tablesorter for sortable headings.
 //
 // The original script was not a jQuery plugin but making it one seemed like the
 // best way to make if more usable in the field.
@@ -134,12 +133,12 @@ $('head').append(headerInsert);
                this.clearLoadingMessage();
                $('#fusionButtonSearch').click(function () {
                     el.fusiondmn("queryTable", "query");
-                    console.log("test search");
+                    ////console.log("test search");
 
                     return false;
                });
                $('#fusionButtonAll').click(function () {
-                    console.log("test all");
+                    ////console.log("test all");
                     el.fusiondmn("queryTable", "all");
                     return false;
                });
@@ -459,19 +458,26 @@ $('head').append(headerInsert);
                var from = " FROM " + o.detailsTableId;
                var where = " WHERE ROWID='" + rowId + "'";
                var sqlString = select + from + where;
-               var queryUrl = "https://www.google.com/fusiontables/api/query?jsonCallback=?&sql=" + escape(sqlString);
+
+
+var queryUrl = 'https://www.googleapis.com/fusiontables/v1/query?sql='+
+                escape(sqlString) + '&key=' + this.options.apiKey +' &callback=?';
+               
 
                // query the data source with a callback
                $.getJSON(queryUrl, function(data, textStatus) {
-                    var cols = data.table.cols;
-                    var rows = data.table.rows;
+                    var cols = data.columns;
+                    var rows = data.rows;
                     // check for results, if none set an error message and return
+                    
                     if (rows) {
+                        
                          if (rows.length == 1) {
                               // create the dataObj
                               var row = rows[0];
+
                               var dataObj = {};
-                              $.each(cols, function (index, col) {
+                              $.each(cols, function (index, col) {                                   //console.log(index);
                                    var val = row[index];
                                    if (_.isNumber(val)) {
                                         if (col != "rowid" ){
